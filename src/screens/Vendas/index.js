@@ -1,133 +1,171 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, ImageBackground, StyleSheet, Dimensions, Modal, TextInput, Alert } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, ImageBackground, StyleSheet, Dimensions, Modal, TextInput, Alert, ScrollView } from "react-native";
 import api from "../../services/api";
 import fundo from "../../assets/fundo-menu.png";
-import { useNavigation } from "@react-navigation/native";
 
 export default function Vendas() {
-    const navigation = useNavigation();
     const [vendas, setVendas] = useState([]);
-    const [modalNovaVendaVisible, setModalNovaVendaVisible] = useState(false);
     const [modalEditarVendaVisible, setModalEditarVendaVisible] = useState(false);
-    const [nomeNovaVenda, setNomeNovaVenda] = useState('');
-    const [editarNomeNovaVenda, setEditarNomeNovaVenda] = useState('');
-    const [idVendaEditar, setIdVendaEditar] = useState();
+
+    const [venda, setVenda] = useState(0);
+    const [usuario, setUsuario] = useState();
+    const [endereco, setEndereco] = useState();
+    const [cidade, setCidade] = useState();
+    const [estado, setEstado] = useState();
+    const [produtosVenda, setProdutosVenda] = useState();
+    const [produtos, setProdutos] = useState([]);
+    const [statusCompra, setStatusCompra] = useState();
+    const [link, setLink] = useState();
 
     const carregaVendas = async () => {
         const resultado = await api.post("/venda/lista-vendas");
-        //await console.log(resultado.data.content);
-        await setVendas(resultado.data.content);
+        setVendas(resultado.data.content);
     }
 
     useEffect(() => {
         carregaVendas();
     }, []);
 
-    const salvarNovaVenda = async () =>{
-        const resposta = await api.post("/venda",{
-            nome: nomeNovaVenda
-        });
-        
-        await carregaVendas();
-        await setModalNovaVendaVisible(false);
-        console.log(resposta.data);
+    const carregaUsuario = async (id) => {
+        const resultado = await api.post("/usuario/id", { id: id });
+        setUsuario(resultado.data);
     }
-    const editaVenda = async () =>{
-        const resposta = await api.post("/venda/editar-venda",{
-            id: idVendaEditar,
-            nome: editarNomeNovaVenda,
-            status: true
-        });
-        
-        await carregaVendas();
-        await setModalEditarVendaVisible(false);
-        console.log(resposta.data);
+    const carregaEndereco = async (id) => {
+        const resultado = await api.post("/endereco/busca-id", { id: id });
+        setEndereco(resultado.data);
+        carregaCidade(resultado.data.cidadeId);
     }
-        
+    const carregaCidade = async (id) => {
+        const resultado = await api.post("/cidade/id", { id: id });
+        setCidade(resultado.data);
+        carregaEstado(resultado.data.estadoId);
+    }
+    const carregaEstado = async (id) => {
+        const resultado = await api.post("/estado/id", { id: id });
+        setEstado(resultado.data);
+    }
+    const carregaProdutoVenda = async (id) => {
+        const resultado = await api.post("/produto-venda/lista-venda", { vendaId: id });
+        setProdutosVenda(resultado.data.content);
+        for (let i = 0; i < resultado.data.content.length; i++) {
+            carregaProdutos(resultado.data.content[i].produtoId);
+        }
+    }
+    const carregaProdutos = async (id) => {
+        const resultado = await api.post("/produto/busca-id", { id: id });
+        setProdutos((prevProdutos) => [...prevProdutos, resultado.data]);
+    }
+    const atualizarVenda = async (id) => {
+        const resultado = await api.post("/venda/editar-venda", { 
+            id: id,
+            status: true,
+            statusDaCompra:statusCompra,
+            linkPagamento: link
+        });
+        console.log(resultado.data);
+        carregaVendas();
+    }
+
     return (
         <View style={styles.container}>
             <ImageBackground source={fundo} style={styles.imageBackground}>
                 <View style={styles.tituloContainer}>
-                    <Text style={styles.tituloText}>CATEGORIAS</Text>
+                    <Text style={styles.tituloText}>LISTA DE VENDAS</Text>
                 </View>
                 <View>
                     <FlatList
                         data={vendas}
                         keyExtractor={item => item.id}
                         renderItem={({ item }) => {
-                            if (item.nome != 'Todas') {
-                                return (
-                                    <View style={styles.vendasContainer}>
-                                        <TouchableOpacity style={styles.itemVenda}
-                                            onPress={()=>{
-                                                setEditarNomeNovaVenda(item.nome);
-                                                setIdVendaEditar(item.id);
-                                                setModalEditarVendaVisible(true);
-                                            }}
-                                        >
-                                            <Text style={styles.textoVenda}>{item.nome}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                );
-                            }
+                            return (
+                                <View style={styles.vendasContainer}>
+                                    <TouchableOpacity style={styles.itemVenda}
+                                        onPress={() => {
+                                            setVenda(item);
+                                            setStatusCompra(item.statusDaCompra);
+                                            setLink(item.linkPagamento);
+                                            setModalEditarVendaVisible(true);
+                                            carregaUsuario(item.usuarioId);
+                                            carregaEndereco(item.enderecoId);
+                                            carregaProdutoVenda(item.id);
+                                        }}
+                                    >
+                                        <Text style={styles.textoVenda}>Número do pedido: {item.id}</Text>
+                                        <Text style={styles.textoVenda}>Situação do pedido: {item.statusDaCompra}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            );
                         }}
                     />
-                    <TouchableOpacity style={styles.botaoNovaVenda} onPress={() => setModalNovaVendaVisible(!modalNovaVendaVisible)}>
-                        <Text style={styles.textoVenda}>Nova Venda</Text>
-                    </TouchableOpacity>
-
-
-
                 </View>
 
                 <Modal
-                    visible={modalNovaVendaVisible}
-                    transparent={true}
-                    onRequestClose={()=>{setModalNovaVendaVisible(false)}}
-                >
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalTituloContainer}>
-                            <Text style={styles.modalTituloText}>NOVA CATEGORIA</Text>
-                        </View>
-                        <View style={styles.modalCamposContainer}>
-                            <Text>Nome</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                onChangeText={(text)=>setNomeNovaVenda(text)}
-                            />
-                        </View>
-                        <TouchableOpacity style={styles.botaoSalvar} 
-                            onPress={()=>{
-                                salvarNovaVenda();
-                            }}
-                        >
-                            <Text style={styles.salvarText}>Salvar</Text>
-                        </TouchableOpacity>
-                    </View>
-                </Modal>
-                <Modal
                     visible={modalEditarVendaVisible}
                     transparent={true}
-                    onRequestClose={()=>{setModalEditarVendaVisible(false)}}
+                    onRequestClose={() => { setModalEditarVendaVisible(false) }}
                 >
                     <View style={styles.modalContainer}>
-                        <View style={styles.modalTituloContainer}>
-                            <Text style={styles.modalTituloText}>EDITAR CATEGORIA</Text>
-                        </View>
-                        <View style={styles.modalCamposContainer}>
-                            <Text>Nome</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                onChangeText={(text)=>setEditarNomeNovaVenda(text)}
-                            >{editarNomeNovaVenda}</TextInput>
-                        </View>
-                        <TouchableOpacity style={styles.botaoSalvar} 
-                            onPress={()=>{
-                                editaVenda();
+                        <Text style={styles.titulo}>Informações do Cliente</Text>
+                        <Text>Nome: {usuario?.nome}</Text>
+                        <Text>CPF: {usuario?.cpf}</Text>
+                        <Text>Celular: {usuario?.celular}</Text>
+                        <Text style={styles.titulo}>Endereço de entrega</Text>
+                        <Text>
+                            Rua: {endereco?.rua}, Número: {endereco?.numero},
+                            Complemento: {endereco?.complemento}, Bairro: {endereco?.bairro},
+                            Cidade: {cidade?.nome}/{estado?.uf}
+                        </Text>
+                        <Text style={styles.titulo}>Informações da Venda</Text>
+                        <Text>Valor: R${venda?.precoTotal}</Text>
+                        <Text>Situação</Text>
+                        <TextInput
+                            value={statusCompra}
+                            style={styles.textInput}
+                            onChangeText={(text) => setStatusCompra(text)}
+                        />
+                        <Text>Link de pagamento</Text>
+                        <TextInput
+                            value={link}
+                            style={styles.textInput}
+                            onChangeText={(text) => setLink(text)}
+                        />
+                        <FlatList
+                            data={produtosVenda}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => {
+                                const product = produtos.find((produto) => produto.id === item.id);
+                                return (
+                                    <View style={styles.itens}>
+                                        <Text style={styles.descricao}>
+                                            Item: {product?.nome}
+                                        </Text>
+                                        <Text style={styles.descricao}>
+                                            Quantidade: {item?.quantidade}
+                                        </Text>
+                                        <Text style={styles.descricao}>
+                                            Valor/Un: R$ {item?.preco}
+                                        </Text>
+                                    </View>
+
+                                );
                             }}
-                        >
-                            <Text style={styles.salvarText}>Salvar</Text>
-                        </TouchableOpacity>
+                        />
+                        <View style={styles.botoesContainer}>
+                            <TouchableOpacity style={styles.botaoSalvar}
+                                onPress={() => {
+                                    setModalEditarVendaVisible(false);
+                                }}
+                            >
+                                <Text style={styles.salvarText}>Ok</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.botaoSalvar}
+                                onPress={() => {
+                                    atualizarVenda(venda?.id);
+                                }}
+                            >
+                                <Text style={styles.salvarText}>Salvar</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </Modal>
 
@@ -152,7 +190,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     tituloText: {
-        fontSize: Dimensions.get('window').width / 25,
+        fontSize: Dimensions.get('screen').width / 25,
         fontStyle: 'italic',
     },
     vendasContainer: {
@@ -160,11 +198,11 @@ const styles = StyleSheet.create({
         marginRight: 10,
         marginLeft: 10,
         justifyContent: 'center',
-        height: Dimensions.get('window').height * 0.05,
+        height: Dimensions.get('screen').height * 0.08,
         marginBottom: '1%',
     },
     textoVenda: {
-        fontSize: Dimensions.get('window').width / 25,
+        fontSize: Dimensions.get('screen').width / 25,
         marginHorizontal: 30,
         fontWeight: 'bold',
     },
@@ -188,23 +226,23 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     modalContainer: {
-        width: Dimensions.get('window').width * 0.6,
-        height: Dimensions.get('window').height * 0.2,
+        width: Dimensions.get('screen').width * 0.9,
+        height: Dimensions.get('screen').height * 0.65,
         backgroundColor: '#D0D0D0',
         alignSelf: 'center',
-        marginTop: '45%',
+        marginTop: '25%',
         borderRadius: 10,
         elevation: 5,
-        padding: '2%',
+        padding: '5%',
     },
     modalCamposContainer: {},
     modalTituloContainer: {},
     modalTituloText: {
-        fontSize: Dimensions.get('window').width / 25,
+        fontSize: Dimensions.get('screen').width / 25,
     },
     textInput: {
-        width: '80%',
-        height: '40%',
+        width: Dimensions.get('screen').width * 0.75,
+        height: Dimensions.get('screen').height * 0.05,
         backgroundColor: 'white',
         borderRadius: 5,
         alignSelf: 'center',
@@ -213,16 +251,26 @@ const styles = StyleSheet.create({
         marginTop: '4%',
     },
     botaoSalvar: {
-        width: '60%',
-        height: '25%',
+        width: Dimensions.get('screen').width * 0.25,
+        height: Dimensions.get('screen').width * 0.10,
         backgroundColor: '#F0A1AF',
         borderRadius: 5,
         alignSelf: 'center',
         padding: '2%',
         alignItems: 'center',
         justifyContent: 'center',
+        marginHorizontal: '3%',
     },
     salvarText: {
         fontWeight: 'bold',
+    },
+    titulo: {
+        fontSize: Dimensions.get('screen').width / 27,
+        fontWeight: 'bold',
+    },
+    botoesContainer:{
+        flexDirection: 'row',
+        justifyContent: 'center',
+        
     },
 });

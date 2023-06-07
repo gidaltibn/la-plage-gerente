@@ -63,6 +63,7 @@ export default function Perfil(params) {
     const [modalVisible, setModalVisible] = useState(false);
     const toggleModal = () => {
         setModalVisible(!modalVisible);
+        setPassword("");
     };
 
     const handleOKPress = async () => {
@@ -136,11 +137,11 @@ export default function Perfil(params) {
         });
         if (!result.canceled) {
             console.log(result);
-            const uri = result.uri;
+            const uri = result.assets[0].uri;
             const startIndex = uri.lastIndexOf('/') + 1;
             const filename = uri.substring(startIndex);
 
-            await converteBase64(result.uri, filename);
+            await converteBase64(result.assets[0].uri, filename);
         }
     }
 
@@ -331,7 +332,12 @@ export default function Perfil(params) {
 
                     </View>
                 </ScrollView>
-                <Modal visible={modalVisible} style={styles.modalContainer} onDismiss={() => setModalVisible(false)}>
+                <Modal
+                    visible={modalVisible}
+                    style={styles.modalContainer}
+                    onDismiss={() => setModalVisible(false)}
+                    transparent={true}
+                >
                     <View style={styles.modalContent}>
                         <Text>Digite sua senha para confirmar as mudanças!</Text>
                         <TextInput
@@ -466,6 +472,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         width: Dimensions.get('screen').width * 0.6,
         height: Dimensions.get('screen').height * 0.25,
+        alignSelf: 'center',
+        marginTop: Dimensions.get('screen').height * 0.25,
     },
     input: {
         borderWidth: 1,
