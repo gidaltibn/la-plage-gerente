@@ -190,12 +190,6 @@ export default function Produtos() {
                                     keyboardType="numeric"
                                     onChangeText={(text) => setPreco(text)}
                                 />
-                                <Text>Quantidade em estoque</Text>
-                                <TextInput
-                                    style={styles.textInput}
-                                    keyboardType="numeric"
-                                    onChangeText={(text) => setEstoque(text)}
-                                />
                             </View>
                             <TouchableOpacity style={styles.botao}
                                 onPress={() => {

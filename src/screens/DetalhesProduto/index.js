@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ImageBackground, StyleSheet, Dimensions, TouchableOpacity, TextInput, ScrollView, Alert, Image, FlatList } from "react-native";
+import { View, Text, ImageBackground, StyleSheet, Dimensions, TouchableOpacity, TextInput, ScrollView, Alert, Image, FlatList, Modal } from "react-native";
 import api from "../../services/api";
 import fundo from "../../assets/fundo-menu.png";
 import remove from "../../assets/remove.png";
@@ -11,6 +11,8 @@ import { SwiperFlatList } from 'react-native-swiper-flatlist';
 import { Picker } from "@react-native-picker/picker";
 
 export default function DetalhesProduto(params) {
+
+    //console.log(params.route.params);
 
     const navigation = useNavigation();
     const [produtosAtualizados, setProdutosAtualizados] = useState(true);
@@ -34,13 +36,27 @@ export default function DetalhesProduto(params) {
 
     const [produto, setProduto] = useState();
 
+    const [tamanhosExibir, setTamanhosExibir] = useState([]);
+    const [tamanhoSalvar, setTamanhoSalvar] = useState([]);
+    const [tamanhoExcluir, setTamanhoExcluir] = useState([]);
+    const [tamanhosEditar, setTamanhosEditar] = useState([]);
+    const [modalVisibilit, setModalVisibilit] = useState(false);
+    const [tamanho, setTamanho] = useState('');
+    const [quantidadeAlterada, setQuantidadeAlterada] = useState('');
+    const [quantidade, setQuantidade] = useState('');
+
     const carregaImagens = async () => {
         const resultado = await api.post("/imagem/produto-imagens", { produtoId: params.route.params?.id });
         setFotosExibir(resultado.data.content);
     }
+    const carregaTamanhos = async () => {
+        const resultado = await api.post("/tamanho/busca-produto-id", { produtoId: params.route.params?.id });
+        console.log(resultado.data.content);
+        setTamanhosExibir(resultado.data.content);
+    }
 
     const carregaProtudo = async () => {
-        const resultado = await api.post("/produto/produto-nome", { nome: params.route.params?.nome });
+        const resultado = await api.post("/produto/busca-id", { id: params.route.params?.id });
         await setProduto(resultado.data);
         setId(resultado.data.id);
         setNome(resultado.data.nome);
@@ -63,6 +79,7 @@ export default function DetalhesProduto(params) {
         carregaProtudo();
         carregaImagens();
         carregaCategorias();
+        carregaTamanhos();
     }, []);
 
     const openGallery = async () => {
@@ -102,6 +119,18 @@ export default function DetalhesProduto(params) {
         setFotosExibir([...fotosExibir, novaFoto]);
     };
 
+    const adicionarTamanho = (quantidade, tamanho) => {
+        const novoId = gerarNumeroAleatorioNaoRepetido(identificadores);
+        const novaQuantidade = quantidade;
+        const novoTamanho = tamanho;
+        const novosTamanho = { id: novoId, quantidade: quantidade, tamanho: tamanho };
+
+        console.log(novosTamanho);
+        setTamanhoSalvar([...tamanhoSalvar, novosTamanho]);
+        setTamanhosExibir([...tamanhosExibir, novosTamanho]);
+        setModalVisibilit(false);
+    };
+
     const salvarImagens = async () => {
         const qtdFotosSalvar = fotosSalvar.length;
 
@@ -114,14 +143,48 @@ export default function DetalhesProduto(params) {
         }
         Alert.alert("Processo concluído", "Alterações salvas com sucesso!");
     }
+    const salvarTamanho = async () => {
+        const qtdTamanhosSalvar = tamanhoSalvar.length;
+
+        for (let i = 0; i < qtdTamanhosSalvar; i++) {
+            const response = await api.post("/tamanho", {
+                quantidade: tamanhoSalvar[i].quantidade,
+                tamanho: tamanhoSalvar[i].tamanho,
+                produtoId: produto.id
+            });
+
+            console.log(response.data);
+        }
+    }
+    
+    const editarTamanho = async () => {
+        const qtdTamanhosEditar = tamanhosEditar.length;
+
+        for (let i = 0; i < qtdTamanhosEditar; i++) {
+            const response = await api.post("/tamanho/atualiza", {
+                id: tamanhosEditar[i].id,
+                quantidade: tamanhosEditar[i].quantidade
+            });
+
+            console.log(response.data);
+        }
+    }
 
     const [imagensExcluir, setImagensExluir] = useState([]);
 
+    const excluirTamanho = async () => {
+        //console.log(imagensExcluir);
+        for (let i = 0; i < tamanhoExcluir.length; i++) {
+            const response = await api.delete("/tamanho/" + tamanhoExcluir[i]);
+            //console.log(response);
+        }
+    }
+    
     const excluirImagem = async () => {
-        console.log(imagensExcluir);
+        //console.log(imagensExcluir);
         for (let i = 0; i < imagensExcluir.length; i++) {
             const response = await api.delete("/imagem/" + imagensExcluir[i]);
-            console.log(response);
+            //console.log(response);
         }
     }
 
@@ -155,10 +218,10 @@ export default function DetalhesProduto(params) {
     }
 
     const excluirProduto = async (id) => {
-        console.log(id);
+        //console.log(id);
         const resposta = await api.delete("/produto/" + id);
         for (let i = 0; i < fotosExibir.length; i++) {
-            console.log(fotosExibir[i].id);
+            //console.log(fotosExibir[i].id);
             const response = await api.delete("/imagem/" + fotosExibir[i].id);
         }
         navigation.goBack();
@@ -223,13 +286,91 @@ export default function DetalhesProduto(params) {
                         </View>
                         <View style={styles.campoContainer}>
                             <Text style={styles.textoDescricaoCampo}>Quantidade em estoque:</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                editable={ativacaoCampos}
-                                value={estoque}
-                                onChangeText={setEstoque}
-                                keyboardType="numeric"
-                            />
+                            <TouchableOpacity
+                                style={[styles.botaoAdicionarTamanho, !ativacaoCampos && styles.botaoExcluirDesativado]}
+                                onPress={() => {
+                                    if (ativacaoCampos) {
+                                        setModalVisibilit(true);
+                                    }
+                                }}
+                            >
+                                <Text style={styles.textoBotaoExcluir}>Adicionar tamanho</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <Modal visible={modalVisibilit} onRequestClose={() => setModalVisibilit(false)} transparent={true}>
+                            <View style={styles.modalContainer}>
+                                <Text style={styles.textoDescricaoCampo}>Tamanho:</Text>
+                                <View style={styles.campoContainer}>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        onChangeText={(text) => setTamanho(text)}
+                                    />
+                                </View>
+                                <Text style={styles.textoDescricaoCampo}>Quantidade:</Text>
+                                <View style={styles.campoContainer}>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        onChangeText={(text) => setQuantidade(text)}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.botaoAdicionarTamanho} // Estilo para simular o botão desativado
+                                    onPress={() => {
+                                        const novoId = gerarNumeroAleatorioNaoRepetido(identificadores);
+                                        const novosTamanho = { id: novoId, quantidade: quantidade, tamanho: tamanho };
+                                        console.log(novosTamanho);
+                                        setTamanhoSalvar([...tamanhoSalvar, novosTamanho]);
+                                        setTamanhosExibir([...tamanhosExibir, novosTamanho]);
+                                        setModalVisibilit(false);
+                                    }}
+                                >
+                                    <Text style={styles.textoBotaoExcluir}>Adicionar</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </Modal>
+
+                        <View style={styles.tamanhoContainer}>
+                            {tamanhosExibir.map((tamanho, index) => (
+                                <View key={index} style={styles.fotoItem}>
+                                    <Text>Tamanho: {tamanho.tamanho}</Text>
+                                    <TextInput editable={ativacaoCampos} style={styles.textInput} onChangeText={(text)=>setQuantidadeAlterada(text)}>{tamanho.quantidade}</TextInput>
+                                    <TouchableOpacity
+                                        style={[styles.botaoAdicionarTamanho, !ativacaoCampos && styles.botaoExcluirDesativado]} // Estilo para simular o botão desativado
+                                        onPress={() => {
+                                            if (ativacaoCampos) {
+                                                const editarTamanho = {id: tamanho.id, quantidade: quantidadeAlterada};
+                                                console.log(editarTamanho);
+                                                setTamanhosEditar([...tamanhosEditar, editarTamanho]);
+                                            }
+                                        }}
+                                    >
+                                        <Text style={styles.textoBotaoExcluir}>Atualizar</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.botaoExcluir, !ativacaoCampos && styles.botaoExcluirDesativado]} // Estilo para simular o botão desativado
+                                        onPress={() => {
+                                            if (ativacaoCampos) {
+                                                const tamanhosExibirAtualizadas = tamanhosExibir.filter((_, i) => i !== index);
+                                                const tamanhosSalvarAtualizadas = tamanhoSalvar.filter((_, i) => i !== index);
+                                                setTamanhosExibir(tamanhosExibirAtualizadas);
+                                                setTamanhoSalvar(tamanhosSalvarAtualizadas);
+
+                                                setTamanhoExcluir((prevTamanhoExcluir) => {
+                                                    if (Array.isArray(prevTamanhoExcluir)) {
+                                                        return [...prevTamanhoExcluir, tamanho.id];
+                                                    } else {
+                                                        return [tamanho.id];
+                                                    }
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <Text style={styles.textoBotaoExcluir}>Excluir</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
                         </View>
 
                         <Text style={styles.textoDescricaoCampo}>Fotos do Produto:</Text>
@@ -286,8 +427,11 @@ export default function DetalhesProduto(params) {
                                 <TouchableOpacity
                                     style={styles.botao}
                                     onPress={() => {
+                                        salvarTamanho();
                                         salvarImagens();
                                         editaProduto();
+                                        editarTamanho();
+                                        excluirTamanho();
                                         excluirImagem();
                                     }}
                                 >
@@ -361,6 +505,12 @@ const styles = StyleSheet.create({
         height: 100,
         textAlign: 'justify',
     },
+    tamanhoContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start',
+        marginBottom: 20,
+    },
     fotosContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -380,6 +530,12 @@ const styles = StyleSheet.create({
     botaoExcluir: {
         marginTop: 5,
         backgroundColor: 'red',
+        padding: 5,
+        borderRadius: 5,
+    },
+    botaoAdicionarTamanho: {
+        marginTop: 5,
+        backgroundColor: '#007bff',
         padding: 5,
         borderRadius: 5,
     },
@@ -415,5 +571,15 @@ const styles = StyleSheet.create({
     },
     botaoExcluirDesativado: {
         opacity: 0.5,
+    },
+    modalContainer: {
+        height: Dimensions.get('screen').height * 0.5,
+        width: Dimensions.get('screen').width * 0.8,
+        backgroundColor: '#F0F0F0',
+        alignSelf: 'center',
+        marginTop: Dimensions.get('screen').height * 0.2,
+        padding: '3%',
+        borderRadius: 5,
+        elevation: 5,
     },
 });

@@ -195,7 +195,7 @@ export default function Perfil(params) {
             <View style={styles.container}>
 
                 <View style={styles.tituloContainer}>
-                    <Text style={styles.tituloText}>Detalhes do Gerente</Text>
+                    <Text style={styles.tituloText}>Perfil</Text>
                 </View>
                 <Image source={fotosExibir.urlImagem !== '' ? { uri: fotosExibir.urlImagem } : null} style={styles.foto} />
 

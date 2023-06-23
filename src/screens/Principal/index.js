@@ -17,10 +17,10 @@ export default function Principal({ route }) {
 
     const carragarFotoPerfil = async (gerenteId) => {
 
-        const response = await api.post("/foto-perfil-gerente/gerente-id", {
+        /*const response = await api.post("/foto-perfil-gerente/gerente-id", {
             gerenteId: gerenteId
         });
-        await setFotosExibir(response.data);
+        await setFotosExibir(response.data);*/
         setLoading(false);
     }
 
