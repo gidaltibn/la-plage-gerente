@@ -298,6 +298,8 @@ export default function DetalhesProduto(params) {
                             </TouchableOpacity>
                         </View>
 
+                        {/*MODAL PARA ADICIONAR NOVO TAMANHO*/}
+                        
                         <Modal visible={modalVisibilit} onRequestClose={() => setModalVisibilit(false)} transparent={true}>
                             <View style={styles.modalContainer}>
                                 <Text style={styles.textoDescricaoCampo}>Tamanho:</Text>
