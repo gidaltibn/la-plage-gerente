@@ -72,7 +72,7 @@ export default function Vendas() {
                 <View style={styles.tituloContainer}>
                     <Text style={styles.tituloText}>LISTA DE VENDAS</Text>
                 </View>
-                <View>
+                <View style={styles.listaVendas}>
                     <FlatList
                         data={vendas}
                         keyExtractor={item => item.id}
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     },
     tituloContainer: {
         width: '100%',
-        height: '20%',
+        height: Dimensions.get('screen').height*0.1,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -272,5 +272,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         
+    },
+    listaVendas: {
+        height: Dimensions.get('screen').height*0.8,
+        paddingBottom: '2%',
+        paddingTop: '2%',
     },
 });

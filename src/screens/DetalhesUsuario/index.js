@@ -91,15 +91,6 @@ export default function DetalhesUsuario(params) {
                                 value={usuario.nome}
                             />
                         </View>
-
-                        <View style={styles.campoContainer}>
-                            <Text style={styles.textoDescricaoCampo}>CPF:</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                editable={false}
-                                value={usuario.cpf}
-                            />
-                        </View>
                         <View style={styles.campoContainer}>
                             <Text style={styles.textoDescricaoCampo}>Data de Nascimento:</Text>
                             <TextInput
